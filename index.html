@@ -1,0 +1,302 @@
+<html class="view">
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
+	<!-- <script src="https://rawgit.com/amark/gun/master/gun.js"></script> -->
+	<script src="https://dl.dropboxusercontent.com/u/4374976/gun/db/gun.js"></script>
+	<script src="./rules.js"></script>
+</head>
+<body class="view">
+	<style>
+		html, body { margin: 0; padding: 0; }
+		.view {
+			text-align: center;
+			width: 100%;
+			height: 100%;
+			display: inline-block;
+			position: relative;
+			overflow: hidden;
+		}
+		.board {
+			max-width: 700px;
+			min-width: 250px;
+		}
+		.cell {
+			width: 14.28%;
+			height: 16.66%;
+			overflow: hidden;
+			float: left;
+		}
+		.snake {
+			position: absolute;
+			background: lime;
+			width: 1%;
+			height: 1%;
+		}
+		.hole {
+			width: 100%; height: 100%; border-radius: 100%; box-shadow: 0 0 0 50px blue;
+		}
+		.face {
+		}
+		.teamA {
+			background: lime;
+		}
+		.teamB {
+			background: red;
+		}
+		.none { display: none; }
+	</style>
+	<div class="face">
+		<div class="instruct" style="height: 10%; font-size: 20pt;">
+			<span>Welcome to C-4!</span>
+			<button class="none">Restart!</button>
+		</div>
+		<div class="mat" style="height: 90%; max-width: 700px; margin: 0 auto;">
+			<div class="select" style="height: 14.28%; position: relative;">
+				<div id="follow" style="height: 100%; width: 14.28%; border-radius: 100%; z-index: -100;"></div>
+			</div>
+			<div class="board" style="height: 85.71%;">
+				<div class="row1">
+					<div class="cell col1"><div class="hole"></div></div>
+					<div class="cell col2"><div class="hole"></div></div>
+					<div class="cell col3"><div class="hole"></div></div>
+					<div class="cell col4"><div class="hole"></div></div>
+					<div class="cell col5"><div class="hole"></div></div>
+					<div class="cell col6"><div class="hole"></div></div>
+					<div class="cell col7"><div class="hole"></div></div>
+				</div>
+				<div class="row2">
+					<div class="cell col1"><div class="hole"></div></div>
+					<div class="cell col2"><div class="hole"></div></div>
+					<div class="cell col3"><div class="hole"></div></div>
+					<div class="cell col4"><div class="hole"></div></div>
+					<div class="cell col5"><div class="hole"></div></div>
+					<div class="cell col6"><div class="hole"></div></div>
+					<div class="cell col7"><div class="hole"></div></div>
+				</div>
+				<div class="row3">
+					<div class="cell col1"><div class="hole"></div></div>
+					<div class="cell col2"><div class="hole"></div></div>
+					<div class="cell col3"><div class="hole"></div></div>
+					<div class="cell col4"><div class="hole"></div></div>
+					<div class="cell col5"><div class="hole"></div></div>
+					<div class="cell col6"><div class="hole"></div></div>
+					<div class="cell col7"><div class="hole"></div></div>
+				</div>
+				<div class="row4">
+					<div class="cell col1"><div class="hole"></div></div>
+					<div class="cell col2"><div class="hole"></div></div>
+					<div class="cell col3"><div class="hole"></div></div>
+					<div class="cell col4"><div class="hole"></div></div>
+					<div class="cell col5"><div class="hole"></div></div>
+					<div class="cell col6"><div class="hole"></div></div>
+					<div class="cell col7"><div class="hole"></div></div>
+				</div>
+				<div class="row5">
+					<div class="cell col1"><div class="hole"></div></div>
+					<div class="cell col2"><div class="hole"></div></div>
+					<div class="cell col3"><div class="hole"></div></div>
+					<div class="cell col4"><div class="hole"></div></div>
+					<div class="cell col5"><div class="hole"></div></div>
+					<div class="cell col6"><div class="hole"></div></div>
+					<div class="cell col7"><div class="hole"></div></div>
+				</div>
+				<div class="row6">
+					<div class="cell col1"><div class="hole"></div></div>
+					<div class="cell col2"><div class="hole"></div></div>
+					<div class="cell col3"><div class="hole"></div></div>
+					<div class="cell col4"><div class="hole"></div></div>
+					<div class="cell col5"><div class="hole"></div></div>
+					<div class="cell col6"><div class="hole"></div></div>
+					<div class="cell col7"><div class="hole"></div></div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="model">
+		<div class="snake">
+		</div>
+	</div>
+	
+	<script>
+	(function(){
+		/*
+			THIS IS HORRIBLY UGLY HACKY CODE THAT WE WROTE REALLY FAST!!!!!!
+			WE WILL BE CLEANING IT UP! WE ARE USING IT AS DOGFOOD TO TEST GUN!
+			COUPLE HANGUPS:
+				- SOMETIMES THE GAME STATE GETS LOCKED, REFRESHING SHOULD DO THE TRICK?
+				- IF IT DOES NOT, TRY ADDING ANOTHER PLAYER (DIFFERENT DEVICE)
+				- SOMETIMES UPDATES WILL NOT RENDER FOR LONG PAUSES/PERIODS (MIDDLE OF DEBUGGING/FIXING THIS)
+				- ETC.
+		*/
+		//var gun = Gun();
+		localStorage.clear(); // impossible to use cached game state.
+		var gun = Gun('https://gunjs.herokuapp.com/gun');
+		var game = window.game = {select: true};
+		game.keys = {left: 37, up: 38, right: 39, down: 40};
+		game.$ = {board: $('.board'), select: $('#follow'), instr: $('.instruct').find('span') };
+		game.my = {};
+		var cookie = (document.cookie.match(/c4\=(.*?)(\&|$|\;)/i)||[])[1];
+		if(cookie){
+			game.my.id = cookie;
+		} else {
+			game.my.id = cookie = Gun.text.random();
+			document.cookie = 'c4=' + cookie;
+		}
+		cookie = (document.cookie.match(/c4Team\=(.*?)(\&|$|\;)/i)||[])[1];
+		if(cookie){
+			game.my.team = cookie
+			setTimeout(function(){ joinTeam(game.my.team) },1);
+		}
+		game.state = gun.get('example/games/connect').set(); // make sure it idempotently exists!
+		game.board = window.board;
+		
+		game.state.on(function(state){
+			//console.log('game update', state);
+			game.data = state;
+			window.turn = game.data.turn;
+			if(game.my.team === game.data.turn){
+				game.$.instr.text("Your Team's Turn!");
+			} else {
+				game.$.instr.text("Other Team Deciding...");
+			}
+			if(!state.board){
+				document.cookie = "c4Team=";
+				//game.my.team = null;
+				buildBoard();
+				game.render(window.board);
+				//game.state.put({board: window.board});
+				//return;
+			}
+			if(!state.lastTeam){ game.my.over = false; game.$.instr.text("Welcome to C-4!").parent().find('button').addClass('none'); }
+			if(!game.my.team){
+				if(!state.teamA){
+					joinTeam('A');
+					game.state.put({turn: 'A'});
+				} else
+				if(!state.teamB){
+					joinTeam('B');
+				} else {
+					game.state.path('teamA').val(function(members){
+						delete members._;
+						var A = Object.keys(members).length;
+						game.state.path('teamB').val(function(members){
+							delete members._;
+							var B = Object.keys(members).length;
+							game.my.team = A < B? 'A' : 'B';
+							joinTeam(game.my.team);
+						});
+					});
+				}
+			}
+		});
+		function check(){
+			if(!game.data.lastTeam || !game.data.lastCoord){ return }
+			if(game.data && maxDistance(game.data.lastTeam, game.data.lastCoord) > 3){ // maxDistance(lastTeam, coord)
+				game.my.over = true;
+				if(game.my.team === game.data.lastTeam){				
+					game.$.instr.text("YOU WIN!");
+				} else {
+					game.$.instr.text("YOU LOSE!!!");
+				}
+				game.$.instr.parent().find("button").removeClass('none');
+			} else {
+				game.my.over = false;
+			}
+		}
+		game.$.instr.parent().find("button").on("click", function(e){
+			e.stopPropagation();
+			game.state.put({teamA: null, teamB: null, board: null, turn: 'A', lastTeam: null, lastCoord: null});
+			joinTeam(game.my.team);
+		});
+		game.state.path('board').on(function(b){
+			if(!b){ return }
+			delete b._;
+			game.render(game.board = window.board = b || window.board);
+			console.log("board was updated!", (game.data.turn == game.my.team));
+			//if(game.data.turn == game.my.team){
+				check();
+			//}
+		});
+		function joinTeam(which){
+			document.cookie = 'c4Team=' + which;
+			game.$.select.addClass('team' + (game.my.team = which)); // locally assign team
+			var join = {};
+			join[game.my.id] = null;
+			game.my.mates = game.state.path('team' + which).put(join);
+		}
+		game.state.path('teamA').on(function(A){
+			console.log("TEAM A UPDATED", A);
+			if(!A){ return }
+			delete A._;
+			teamVotes.A.votes = A;
+		});
+		game.state.path('teamB').on(function(B){
+			if(!B){ return }
+			delete B._;
+			teamVotes.B.votes = B;
+		});
+		
+		var $s = game.$.select;
+		$(document).on("mousemove", function(e){
+			if(!game.data || game.my.over || window.turn !== game.my.team){ return }
+			$s.css({top: 0, left: e.clientX - $s.width()/2 - $s.parent().offset().left, position: 'absolute'});
+		});
+		
+		$(document).on('click', function(e){
+			if(!game.data || game.my.over || window.turn !== game.my.team){ return }
+			
+			var x = e.clientX, c = 1, vote, left;
+			$('.row1').find('.cell').each(function(i){
+				var l = $(this).offset().left;
+				if(l < x && x < l + $(this).width()){
+					vote = c; left = l;
+				} c++;
+			});
+			
+			var votery = window.teamVotes[game.my.team].votes;
+			var team = window.turn; var votesLength = (Object.keys(votery)||[]).length || 1;
+			teamVoting(game.my.id, game.my.team, vote, votesLength);
+			console.log("YOU VOTED! it was ", team, "turn but now it is", window.turn, "'s turn.");
+			console.log('teamVoting(', game.my.id, game.my.team, vote, votesLength);
+			console.log("What is the current team votes?", window.teamVotes[game.my.team].votes, votesLength);
+			if(team === window.turn){
+				info && game.$.instr.text(info);
+				game.my.mates.path(game.my.id).put(vote);
+				console.log("sent out your vote to teammates");
+				return;
+			}
+			game.$.instr.text("Waiting for other Team to Play!");
+			console.log("THE GAME'S TIDE HAS CHANGED!!!!!!!! Change it up!");
+			Gun.obj.map(votery, function(vote, id){ votery[id] = null });
+			game.my.mates.put(votery);
+			setTimeout(function(){
+				game.state.put({turn: window.turn, board: window.board, lastTeam: team, lastCoord: lastPlacement});
+				console.log("We just updated the game state!");
+			},10);
+			
+			// TODO: Recalculate animation based on lastPlacement. NOT what the user voted for.
+			$s.css({left: left - $('.board').offset().left }).animate({
+				top: $('.row6').find('.cell').first().offset().top - $('.select').offset().top
+			}, function(){
+				$s.css({left: 0, top: 0});
+				//game.render(board);
+			});
+		});
+		
+		game.render = function(board){
+			//console.log('render the board', board);
+			Gun.obj.map(board, function(team, coord){
+				coord = coord + '';
+				if(!team || !Gun.text.is(team)){ return }
+				if(' ' == team){
+					game.$.board.find('.row' + coord[0]).find('.col' + coord[1]).find('.hole').removeClass('teamA').removeClass('teamB');
+					return;
+				}
+				game.$.board.find('.row' + coord[0]).find('.col' + coord[1]).find('.hole').addClass('team' + team);
+			})
+		}
+	}());
+	</script>
+</body>
+</html>

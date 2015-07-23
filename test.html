@@ -1,0 +1,193 @@
+<html class="view">
+<head>
+	<script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
+	<!-- <script src="https://rawgit.com/amark/gun/master/gun.js"></script> -->
+	<script src="https://dl.dropboxusercontent.com/u/4374976/gun/db/gun.js"></script>
+	<script src="./rules.js"></script>
+</head>
+<body class="view">
+	<style>
+		html, body { margin: 0; padding: 0; }
+		.view {
+			text-align: center;
+			width: 100%;
+			height: 100%;
+			display: inline-block;
+			position: relative;
+			overflow: hidden;
+		}
+		.board {
+			max-width: 700px;
+			min-width: 250px;
+		}
+		.cell {
+			width: 14.28%;
+			height: 16.66%;
+			overflow: hidden;
+			float: left;
+		}
+		.snake {
+			position: absolute;
+			background: lime;
+			width: 1%;
+			height: 1%;
+		}
+		.hole {
+			width: 100%; height: 100%; border-radius: 100%; box-shadow: 0 0 0 50px blue;
+		}
+		.face {
+		}
+		.teamA {
+			background: lime;
+		}
+		.teamB {
+			background: red;
+		}
+	</style>
+	<div class="face">
+		<div class="instruct" style="height: 10%">
+			Welcome to Consensus Connect Four!
+		</div>
+		<div class="mat" style="height: 90%; max-width: 700px; margin: 0 auto;">
+			<div class="select" style="height: 14.28%; position: relative;">
+				<div id="follow" style="height: 100%; width: 14.28%; border-radius: 100%; z-index: -100;"></div>
+			</div>
+			<div class="board" style="height: 85.71%;">
+				<div class="row1">
+					<div class="cell col1"><div class="hole"></div></div>
+					<div class="cell col2"><div class="hole"></div></div>
+					<div class="cell col3"><div class="hole"></div></div>
+					<div class="cell col4"><div class="hole"></div></div>
+					<div class="cell col5"><div class="hole"></div></div>
+					<div class="cell col6"><div class="hole"></div></div>
+					<div class="cell col7"><div class="hole"></div></div>
+				</div>
+				<div class="row2">
+					<div class="cell col1"><div class="hole"></div></div>
+					<div class="cell col2"><div class="hole"></div></div>
+					<div class="cell col3"><div class="hole"></div></div>
+					<div class="cell col4"><div class="hole"></div></div>
+					<div class="cell col5"><div class="hole"></div></div>
+					<div class="cell col6"><div class="hole"></div></div>
+					<div class="cell col7"><div class="hole"></div></div>
+				</div>
+				<div class="row3">
+					<div class="cell col1"><div class="hole"></div></div>
+					<div class="cell col2"><div class="hole"></div></div>
+					<div class="cell col3"><div class="hole"></div></div>
+					<div class="cell col4"><div class="hole"></div></div>
+					<div class="cell col5"><div class="hole"></div></div>
+					<div class="cell col6"><div class="hole"></div></div>
+					<div class="cell col7"><div class="hole"></div></div>
+				</div>
+				<div class="row4">
+					<div class="cell col1"><div class="hole"></div></div>
+					<div class="cell col2"><div class="hole"></div></div>
+					<div class="cell col3"><div class="hole"></div></div>
+					<div class="cell col4"><div class="hole"></div></div>
+					<div class="cell col5"><div class="hole"></div></div>
+					<div class="cell col6"><div class="hole"></div></div>
+					<div class="cell col7"><div class="hole"></div></div>
+				</div>
+				<div class="row5">
+					<div class="cell col1"><div class="hole"></div></div>
+					<div class="cell col2"><div class="hole"></div></div>
+					<div class="cell col3"><div class="hole"></div></div>
+					<div class="cell col4"><div class="hole"></div></div>
+					<div class="cell col5"><div class="hole"></div></div>
+					<div class="cell col6"><div class="hole"></div></div>
+					<div class="cell col7"><div class="hole"></div></div>
+				</div>
+				<div class="row6">
+					<div class="cell col1"><div class="hole"></div></div>
+					<div class="cell col2"><div class="hole"></div></div>
+					<div class="cell col3"><div class="hole"></div></div>
+					<div class="cell col4"><div class="hole"></div></div>
+					<div class="cell col5"><div class="hole"></div></div>
+					<div class="cell col6"><div class="hole"></div></div>
+					<div class="cell col7"><div class="hole"></div></div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="model">
+		<div class="snake">
+		</div>
+	</div>
+	
+	<script>
+	(function(){
+		/*
+			THIS IS HORRIBLY UGLY HACKY CODE THAT WE WROTE REALLY FAST!!!!!!
+		*/
+		//var gun = Gun();
+		localStorage.clear(); // impossible to use cached game state.
+		var gun = Gun('https://gunjs.herokuapp.com/gun');
+		var game = window.game = {};
+		game.$ = {board: $('.board'), select: $('#follow'), instr: $('.instruct')};
+		game.my = {id: Gun.text.random(6), turn: false};
+		game.state = gun.get('example/games/connect').set(); // make sure it idempotently exists!
+		game.board = window.board;
+		game.state.on(function(state){
+			//console.log('game update', state);
+			if(!state.turn){
+				game.state.put({turn: 'A'});
+			}
+			game.data = state;
+			window.turn = game.data.turn;
+			game.$.select.addClass('team' + window.turn);
+		});
+		game.state.path('board').on(function(b){
+			if(!b){ buildBoard(); b = window.board }
+			delete b._;
+			game.render(window.board = b);
+		});
+		game.state.path('teamA').on(function(A){
+			if(!A){ return }
+			delete A._;
+			teamVotes.A.votes = A;
+		});
+		game.state.path('teamB').on(function(B){
+			if(!B){ return }
+			delete B._;
+			teamVotes.B.votes = B;
+		});
+		
+		var $s = game.$.select;
+		$(document).on("mousemove", function(e){
+			$s.css({top: 0, left: e.clientX - $s.width()/2 - $s.parent().offset().left, position: 'absolute'});
+		});
+		$(document).on('click', function(e){
+				var x = e.clientX, c = 1, vote, left;
+				$('.row1').find('.cell').each(function(i){
+					var l = $(this).offset().left;
+					if(l < x && x < l + $(this).width()){
+						vote = c; left = l;
+					} c++;
+				});
+				var team = window.turn;
+				teamVoting(game.my.id, game.my.team || team, vote, 1);
+				game.state.put({turn: window.turn, board: window.board, lastTeam: team, lastCoord: lastPlacement});
+		});
+		
+		game.render = function(board){
+			//console.log('render the board', board);
+			Gun.obj.map(board, function(team, coord){
+				coord = coord + '';
+				if(!team || !Gun.text.is(team)){ return }
+				if(' ' == team){
+					game.$.board.find('.row' + coord[0]).find('.col' + coord[1]).find('.hole').removeClass('teamA').removeClass('teamB');
+					return;
+				}
+				game.$.board.find('.row' + coord[0]).find('.col' + coord[1]).find('.hole').addClass('team' + team);
+			})
+		}
+		
+		game.restart = function(){
+			document.cookie = "c4Team=";
+			game.state.put({teamA: null, teamB: null, turn: null, board: null});
+		}
+	}());
+	</script>
+</body>
+</html>
